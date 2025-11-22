@@ -10,7 +10,6 @@
     "dev:full": "concurrently \"npm run dev\" \"cd ../server && npm run dev\""
   },
   "dependencies": {
-<<<<<<< Updated upstream
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -30,17 +29,6 @@
     "@types/uuid": "^10.0.0",
     "concurrently": "^9.2.1",
     "tsx": "^4.20.6",
-=======
-    "@tailwindcss/vite": "^4.1.17",
-    "uuid": "^10.0.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/cli": "^4.1.17",
-    "@types/uuid": "^10.0.0",
-    "autoprefixer": "^10.4.22",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.17",
->>>>>>> Stashed changes
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
   }

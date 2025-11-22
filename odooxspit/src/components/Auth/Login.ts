@@ -1,4 +1,5 @@
-import { store } from '../../store';
+import { store } from '../../store/api-store';
+import { api } from '../../services/api';
 import { router } from '../../router';
 
 export function LoginComponent(): HTMLElement {
@@ -28,26 +29,22 @@ export function LoginComponent(): HTMLElement {
   `;
 
   const form = container.querySelector('#login-form') as HTMLFormElement;
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    // Simple authentication (in production, this would call an API)
-    let user = store.findUserByEmail(email);
-    if (!user) {
-      // Create user if doesn't exist (for demo purposes)
-      user = store.createUser({
-        email,
-        name: email.split('@')[0],
-        role: 'inventory_manager',
-      });
+    try {
+      const response = await api.login(email, password);
+      if (response.data.user) {
+        store.setCurrentUser(response.data.user);
+        router.setAuthState(true);
+        router.navigate('/dashboard');
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Login failed');
     }
-
-    store.setCurrentUser(user);
-    router.setAuthState(true);
-    router.navigate('/dashboard');
   });
 
   container.querySelector('#signup-link')?.addEventListener('click', (e) => {

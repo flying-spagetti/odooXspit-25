@@ -1,5 +1,19 @@
 import './style.css'
-
+import { router } from './router'
+import { store } from './store/api-store'
+import { LoginComponent } from './components/Auth/Login'
+import { SignupComponent } from './components/Auth/Signup'
+import { ForgotPasswordComponent } from './components/Auth/ForgotPassword'
+import { DashboardComponent } from './components/Dashboard'
+import { ProductsComponent } from './components/Products'
+import { ReceiptsComponent } from './components/Receipts'
+import { DeliveriesComponent } from './components/Deliveries'
+import { TransfersComponent } from './components/Transfers'
+import { AdjustmentsComponent } from './components/Adjustments'
+import { HistoryComponent } from './components/History'
+import { SettingsComponent } from './components/Settings'
+import { ProfileComponent } from './components/Profile'
+import { StockComponent } from './components/Stock'
 
 // Check if user is authenticated
 const currentUser = store.getCurrentUser()
@@ -11,6 +25,7 @@ router.addRoute({ path: '/signup', component: SignupComponent })
 router.addRoute({ path: '/forgot-password', component: ForgotPasswordComponent })
 router.addRoute({ path: '/dashboard', component: DashboardComponent, requiresAuth: true })
 router.addRoute({ path: '/products', component: ProductsComponent, requiresAuth: true })
+router.addRoute({ path: '/stock', component: StockComponent, requiresAuth: true })
 router.addRoute({ path: '/receipts', component: ReceiptsComponent, requiresAuth: true })
 router.addRoute({ path: '/deliveries', component: DeliveriesComponent, requiresAuth: true })
 router.addRoute({ path: '/transfers', component: TransfersComponent, requiresAuth: true })
@@ -20,9 +35,9 @@ router.addRoute({ path: '/settings', component: SettingsComponent, requiresAuth:
 router.addRoute({ path: '/profile', component: ProfileComponent, requiresAuth: true })
 
 // Default route
-router.addRoute({ path: '/', component: () => {
+router.addRoute({ path: '/', component: async () => {
   if (currentUser) {
-    return DashboardComponent()
+    return await DashboardComponent()
   } else {
     return LoginComponent()
   }

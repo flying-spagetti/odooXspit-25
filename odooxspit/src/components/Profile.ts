@@ -1,4 +1,4 @@
-import { store } from '../store';
+import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 
 export function ProfileComponent(): HTMLElement {

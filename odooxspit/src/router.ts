@@ -1,6 +1,6 @@
 export type Route = {
   path: string;
-  component: () => HTMLElement;
+  component: () => HTMLElement | Promise<HTMLElement>;
   requiresAuth?: boolean;
 };
 
@@ -27,7 +27,7 @@ class Router {
     this.handleRoute();
   }
 
-  private handleRoute() {
+  private async handleRoute() {
     const path = window.location.pathname;
     const route = this.routes.find((r) => r.path === path) || this.routes.find((r) => r.path === '/');
 
@@ -42,15 +42,28 @@ class Router {
     }
 
     this.currentRoute = route;
-    this.render();
+    await this.render();
   }
 
-  private render() {
+  private async render() {
     const app = document.querySelector<HTMLDivElement>('#app');
     if (!app || !this.currentRoute) return;
 
-    app.innerHTML = '';
-    app.appendChild(this.currentRoute.component());
+    try {
+      app.innerHTML = '';
+      const component = this.currentRoute.component();
+      const element = component instanceof Promise ? await component : component;
+      app.appendChild(element);
+    } catch (error) {
+      console.error('Error rendering component:', error);
+      app.innerHTML = `
+        <div style="padding: 2rem; text-align: center;">
+          <h1>Error Loading Page</h1>
+          <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
+          <button onclick="window.location.reload()" class="btn btn-primary">Reload</button>
+        </div>
+      `;
+    }
   }
 
   getCurrentPath(): string {

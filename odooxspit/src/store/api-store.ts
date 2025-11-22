@@ -163,8 +163,24 @@ class ApiStore {
       warehouseId: receipt.warehouseId,
       status: receipt.status,
       items: receipt.items,
+      scheduledDate: receipt.scheduledDate ? receipt.scheduledDate.toISOString().split('T')[0] : undefined,
     });
     return this.mapReceipt(response.data.data);
+  }
+
+  async updateReceipt(id: string, updates: Partial<Receipt>): Promise<Receipt | null> {
+    try {
+      const response = await api.updateReceipt(id, {
+        supplier: updates.supplier,
+        warehouseId: updates.warehouseId,
+        status: updates.status,
+        items: updates.items,
+        scheduledDate: updates.scheduledDate ? updates.scheduledDate.toISOString().split('T')[0] : undefined,
+      });
+      return this.mapReceipt(response.data.data);
+    } catch (error) {
+      return null;
+    }
   }
 
   // Delivery Management
@@ -182,8 +198,24 @@ class ApiStore {
       warehouseId: delivery.warehouseId,
       status: delivery.status,
       items: delivery.items,
+      scheduledDate: delivery.scheduledDate ? delivery.scheduledDate.toISOString().split('T')[0] : undefined,
     });
     return this.mapDelivery(response.data.data);
+  }
+
+  async updateDelivery(id: string, updates: Partial<DeliveryOrder>): Promise<DeliveryOrder | null> {
+    try {
+      const response = await api.updateDelivery(id, {
+        customer: updates.customer,
+        warehouseId: updates.warehouseId,
+        status: updates.status,
+        items: updates.items,
+        scheduledDate: updates.scheduledDate ? updates.scheduledDate.toISOString().split('T')[0] : undefined,
+      });
+      return this.mapDelivery(response.data.data);
+    } catch (error) {
+      return null;
+    }
   }
 
   // Transfer Management

@@ -102,6 +102,10 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
             </select>
           </div>
           <div class="form-group">
+            <label>Scheduled Date (Optional)</label>
+            <input type="date" id="receipt-scheduled-date" value="${receipt?.scheduledDate ? new Date(receipt.scheduledDate).toISOString().split('T')[0] : ''}" />
+          </div>
+          <div class="form-group">
             <label>Items</label>
             <div id="receipt-items">
               ${items.map((item, idx) => `
@@ -163,6 +167,8 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
       const supplier = (modal.querySelector('#receipt-supplier') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#receipt-warehouse') as HTMLSelectElement).value;
       const status = (modal.querySelector('#receipt-status') as HTMLSelectElement).value as any;
+      const scheduledDateInput = (modal.querySelector('#receipt-scheduled-date') as HTMLInputElement).value;
+      const scheduledDate = scheduledDateInput ? scheduledDateInput : undefined;
 
       const formItems: typeof items = [];
       modal.querySelectorAll('.item-row').forEach((row) => {
@@ -174,28 +180,59 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
         }
       });
 
+      // Validate that at least one item is added
+      if (formItems.length === 0) {
+        alert('Please add at least one item to the receipt.');
+        return;
+      }
+
+      // Validate supplier
+      if (!supplier || supplier.trim() === '') {
+        alert('Please enter a supplier name.');
+        return;
+      }
+
       try {
         if (receipt) {
-          receipt.supplier = supplier;
-          receipt.warehouseId = warehouseId;
-          receipt.status = status;
-          receipt.items = formItems;
-          await store.createReceipt(receipt);
+          // Update existing receipt
+          await store.updateReceipt(receipt.id, {
+            supplier,
+            warehouseId,
+            status,
+            items: formItems,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+          });
         } else {
+          // Create new receipt
           await store.createReceipt({
             type: 'receipt',
             supplier,
             warehouseId,
             status,
             items: formItems,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
           });
         }
 
         document.body.removeChild(modal);
         await renderReceipts();
-      } catch (error) {
-        alert('Failed to save receipt. Make sure the backend server is running.');
-        console.error(error);
+      } catch (error: any) {
+        // Show actual error message from backend
+        let errorMessage = 'Failed to save receipt.';
+        
+        if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        } else if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
+          errorMessage = 'Network error: Make sure the backend server is running on http://localhost:3001';
+        }
+        
+        alert(`Failed to save receipt: ${errorMessage}`);
+        console.error('Receipt save error:', error);
+        console.error('Error response:', error?.response);
       }
     });
 

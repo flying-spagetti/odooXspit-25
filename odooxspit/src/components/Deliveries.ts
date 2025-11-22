@@ -2,15 +2,17 @@ import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { DeliveryOrder } from '../types';
 
-export function DeliveriesComponent(): HTMLElement {
+export async function DeliveriesComponent(): Promise<HTMLElement> {
   const container = document.createElement('div');
   container.className = 'deliveries-page';
 
-  function renderDeliveries() {
+  const warehouses = await store.getWarehouses();
+
+  async function renderDeliveries() {
     const deliveriesList = container.querySelector('#deliveries-list');
     if (!deliveriesList) return;
 
-    const deliveries = store.getDeliveries();
+    const deliveries = await store.getDeliveries();
     deliveriesList.innerHTML = `
       <table>
         <thead>
@@ -29,7 +31,7 @@ export function DeliveriesComponent(): HTMLElement {
             <tr>
               <td>${delivery.id.substring(0, 8)}</td>
               <td>${delivery.customer}</td>
-              <td>${store.getWarehouse(delivery.warehouseId)?.name || 'N/A'}</td>
+              <td>${warehouses.find(w => w.id === delivery.warehouseId)?.name || 'N/A'}</td>
               <td>${delivery.items.length} items</td>
               <td><span class="status-badge status-${delivery.status}">${delivery.status}</span></td>
               <td>${delivery.createdAt.toLocaleDateString()}</td>
@@ -46,25 +48,27 @@ export function DeliveriesComponent(): HTMLElement {
     `;
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const deliveryId = (btn as HTMLElement).dataset.deliveryId;
         if (deliveryId) {
-          const delivery = deliveries.find((d) => d.id === deliveryId);
+          const allDeliveries = await store.getDeliveries();
+          const delivery = allDeliveries.find((d) => d.id === deliveryId);
           if (delivery) {
-            delivery.status = 'done';
-            store.createDelivery(delivery);
-            renderDeliveries();
+            await store.updateDelivery(delivery.id, { status: 'done' });
+            await renderDeliveries();
           }
         }
       });
     });
   }
 
-  function showDeliveryModal(delivery?: DeliveryOrder) {
+  async function showDeliveryModal(delivery?: DeliveryOrder) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    const products = store.getProducts();
-    const warehouses = store.getWarehouses();
+    const [products, modalWarehouses] = await Promise.all([
+      store.getProducts(),
+      store.getWarehouses(),
+    ]);
     let items: Array<{ productId: string; quantity: number }> = delivery?.items || [];
 
     modal.innerHTML = `
@@ -81,7 +85,7 @@ export function DeliveriesComponent(): HTMLElement {
           <div class="form-group">
             <label>Warehouse</label>
             <select id="delivery-warehouse" required>
-              ${warehouses.map((w) => `<option value="${w.id}" ${delivery?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
+              ${modalWarehouses.map((w) => `<option value="${w.id}" ${delivery?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -92,6 +96,10 @@ export function DeliveriesComponent(): HTMLElement {
               <option value="ready" ${delivery?.status === 'ready' ? 'selected' : ''}>Ready</option>
               <option value="done" ${delivery?.status === 'done' ? 'selected' : ''}>Done</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Scheduled Date (Optional)</label>
+            <input type="date" id="delivery-scheduled-date" value="${delivery?.scheduledDate ? new Date(delivery.scheduledDate).toISOString().split('T')[0] : ''}" />
           </div>
           <div class="form-group">
             <label>Items</label>
@@ -146,11 +154,13 @@ export function DeliveriesComponent(): HTMLElement {
     });
 
     const form = modal.querySelector('#delivery-form') as HTMLFormElement;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const customer = (modal.querySelector('#delivery-customer') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#delivery-warehouse') as HTMLSelectElement).value;
       const status = (modal.querySelector('#delivery-status') as HTMLSelectElement).value as any;
+      const scheduledDateInput = (modal.querySelector('#delivery-scheduled-date') as HTMLInputElement).value;
+      const scheduledDate = scheduledDateInput ? scheduledDateInput : undefined;
 
       const formItems: typeof items = [];
       modal.querySelectorAll('.item-row').forEach((row) => {
@@ -161,24 +171,60 @@ export function DeliveriesComponent(): HTMLElement {
         }
       });
 
-      if (delivery) {
-        delivery.customer = customer;
-        delivery.warehouseId = warehouseId;
-        delivery.status = status;
-        delivery.items = formItems;
-        store.createDelivery(delivery);
-      } else {
-        store.createDelivery({
-          type: 'delivery',
-          customer,
-          warehouseId,
-          status,
-          items: formItems,
-        });
+      // Validate that at least one item is added
+      if (formItems.length === 0) {
+        alert('Please add at least one item to the delivery.');
+        return;
       }
 
-      document.body.removeChild(modal);
-      renderDeliveries();
+      // Validate customer
+      if (!customer || customer.trim() === '') {
+        alert('Please enter a customer name.');
+        return;
+      }
+
+      try {
+        if (delivery) {
+          // Update existing delivery
+          await store.updateDelivery(delivery.id, {
+            customer,
+            warehouseId,
+            status,
+            items: formItems,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+          });
+        } else {
+          // Create new delivery
+          await store.createDelivery({
+            type: 'delivery',
+            customer,
+            warehouseId,
+            status,
+            items: formItems,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+          });
+        }
+
+        document.body.removeChild(modal);
+        await renderDeliveries();
+      } catch (error: any) {
+        // Show actual error message from backend
+        let errorMessage = 'Failed to save delivery.';
+        
+        if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        } else if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
+          errorMessage = 'Network error: Make sure the backend server is running on http://localhost:3001';
+        }
+        
+        alert(`Failed to save delivery: ${errorMessage}`);
+        console.error('Delivery save error:', error);
+        console.error('Error response:', error?.response);
+      }
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -197,11 +243,11 @@ export function DeliveriesComponent(): HTMLElement {
     <div id="deliveries-list"></div>
   `;
 
-  container.querySelector('#add-delivery-btn')?.addEventListener('click', () => {
-    showDeliveryModal();
+  container.querySelector('#add-delivery-btn')?.addEventListener('click', async () => {
+    await showDeliveryModal();
   });
 
-  renderDeliveries();
+  await renderDeliveries();
 
   return LayoutComponent(container);
 }

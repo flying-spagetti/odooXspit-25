@@ -54,7 +54,7 @@ if (path === '/' || path === '') {
 =======
 import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import { setupCounter } from './App.ts'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>

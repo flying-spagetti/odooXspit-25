@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { store } from '../store/api-store';
 import { api } from '../services/api';
+=======
+import { store } from '../store';
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
 import { router } from '../router';
 
 export function LayoutComponent(content: HTMLElement): HTMLElement {
@@ -22,10 +26,13 @@ export function LayoutComponent(content: HTMLElement): HTMLElement {
           <span class="nav-icon">📦</span>
           <span>Products</span>
         </a>
+<<<<<<< HEAD
         <a href="#" data-route="/stock" class="nav-item">
           <span class="nav-icon">📊</span>
           <span>Stock Management</span>
         </a>
+=======
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
         <a href="#" data-route="/receipts" class="nav-item">
           <span class="nav-icon">📥</span>
           <span>Receipts</span>
@@ -91,7 +98,10 @@ export function LayoutComponent(content: HTMLElement): HTMLElement {
   // Logout handler
   container.querySelector('#logout-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
+<<<<<<< HEAD
     api.logout();
+=======
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     store.setCurrentUser(null);
     router.setAuthState(false);
     router.navigate('/login');

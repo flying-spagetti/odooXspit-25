@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { Receipt } from '../types';
@@ -16,6 +17,21 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
     if (!receiptsList) return;
 
     const receipts = await store.getReceipts();
+=======
+import { store } from '../store';
+import { LayoutComponent } from './Layout';
+import type { Receipt } from '../types';
+
+export function ReceiptsComponent(): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'receipts-page';
+
+  function renderReceipts() {
+    const receiptsList = container.querySelector('#receipts-list');
+    if (!receiptsList) return;
+
+    const receipts = store.getReceipts();
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     receiptsList.innerHTML = `
       <table>
         <thead>
@@ -34,7 +50,11 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
             <tr>
               <td>${receipt.id.substring(0, 8)}</td>
               <td>${receipt.supplier}</td>
+<<<<<<< HEAD
               <td>${warehouses.find(w => w.id === receipt.warehouseId)?.name || 'N/A'}</td>
+=======
+              <td>${store.getWarehouse(receipt.warehouseId)?.name || 'N/A'}</td>
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
               <td>${receipt.items.length} items</td>
               <td><span class="status-badge status-${receipt.status}">${receipt.status}</span></td>
               <td>${receipt.createdAt.toLocaleDateString()}</td>
@@ -51,21 +71,31 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
     `;
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
+<<<<<<< HEAD
       btn.addEventListener('click', async () => {
+=======
+      btn.addEventListener('click', () => {
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
         const receiptId = (btn as HTMLElement).dataset.receiptId;
         if (receiptId) {
           const receipt = receipts.find((r) => r.id === receiptId);
           if (receipt) {
             receipt.status = 'done';
             // Re-create to trigger stock update
+<<<<<<< HEAD
             await store.createReceipt(receipt);
             await renderReceipts();
+=======
+            store.createReceipt(receipt);
+            renderReceipts();
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
           }
         }
       });
     });
   }
 
+<<<<<<< HEAD
   async function showReceiptModal(receipt?: Receipt) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -73,6 +103,13 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
       store.getProducts(),
       store.getWarehouses(),
     ]);
+=======
+  function showReceiptModal(receipt?: Receipt) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const products = store.getProducts();
+    const warehouses = store.getWarehouses();
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     let items: Array<{ productId: string; quantity: number; unitPrice?: number }> = receipt?.items || [];
 
     modal.innerHTML = `
@@ -89,7 +126,11 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
           <div class="form-group">
             <label>Warehouse</label>
             <select id="receipt-warehouse" required>
+<<<<<<< HEAD
               ${modalWarehouses.map((w) => `<option value="${w.id}" ${receipt?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
+=======
+              ${warehouses.map((w) => `<option value="${w.id}" ${receipt?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
             </select>
           </div>
           <div class="form-group">
@@ -157,8 +198,13 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
       });
     });
 
+<<<<<<< HEAD
       const form = modal.querySelector('#receipt-form') as HTMLFormElement;
     form.addEventListener('submit', async (e) => {
+=======
+    const form = modal.querySelector('#receipt-form') as HTMLFormElement;
+    form.addEventListener('submit', (e) => {
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
       e.preventDefault();
       const supplier = (modal.querySelector('#receipt-supplier') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#receipt-warehouse') as HTMLSelectElement).value;
@@ -174,6 +220,7 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
         }
       });
 
+<<<<<<< HEAD
       try {
         if (receipt) {
           receipt.supplier = supplier;
@@ -197,6 +244,26 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
         alert('Failed to save receipt. Make sure the backend server is running.');
         console.error(error);
       }
+=======
+      if (receipt) {
+        receipt.supplier = supplier;
+        receipt.warehouseId = warehouseId;
+        receipt.status = status;
+        receipt.items = formItems;
+        store.createReceipt(receipt);
+      } else {
+        store.createReceipt({
+          type: 'receipt',
+          supplier,
+          warehouseId,
+          status,
+          items: formItems,
+        });
+      }
+
+      document.body.removeChild(modal);
+      renderReceipts();
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -215,6 +282,7 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
     <div id="receipts-list"></div>
   `;
 
+<<<<<<< HEAD
   container.querySelector('#add-receipt-btn')?.addEventListener('click', async () => {
     await showReceiptModal();
   });
@@ -226,5 +294,14 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
     container.innerHTML = '<div class="error">Error loading receipts</div>';
     return LayoutComponent(container);
   }
+=======
+  container.querySelector('#add-receipt-btn')?.addEventListener('click', () => {
+    showReceiptModal();
+  });
+
+  renderReceipts();
+
+  return LayoutComponent(container);
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
 }
 

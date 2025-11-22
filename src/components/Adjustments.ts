@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { store } from '../store/api-store';
+=======
+import { store } from '../store';
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
 import { LayoutComponent } from './Layout';
 import type { StockAdjustment } from '../types';
 

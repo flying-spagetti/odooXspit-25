@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { store } from '../../store/api-store';
 import { api } from '../../services/api';
+=======
+import { store } from '../../store';
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
 import { router } from '../../router';
 
 export function SignupComponent(): HTMLElement {
@@ -39,11 +43,16 @@ export function SignupComponent(): HTMLElement {
   `;
 
   const form = container.querySelector('#signup-form') as HTMLFormElement;
+<<<<<<< HEAD
   form.addEventListener('submit', async (e) => {
+=======
+  form.addEventListener('submit', (e) => {
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     e.preventDefault();
     const formData = new FormData(form);
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
+<<<<<<< HEAD
     const password = formData.get('password') as string;
     const role = formData.get('role') as 'inventory_manager' | 'warehouse_staff';
 
@@ -57,6 +66,19 @@ export function SignupComponent(): HTMLElement {
     } catch (error: any) {
       alert(error.response?.data?.message || 'Signup failed');
     }
+=======
+    const role = formData.get('role') as 'inventory_manager' | 'warehouse_staff';
+
+    const user = store.createUser({
+      email,
+      name,
+      role,
+    });
+
+    store.setCurrentUser(user);
+    router.setAuthState(true);
+    router.navigate('/dashboard');
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
   });
 
   container.querySelector('#login-link')?.addEventListener('click', (e) => {

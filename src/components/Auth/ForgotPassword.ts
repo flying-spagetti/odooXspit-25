@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import { api } from '../../services/api';
+=======
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
 import { router } from '../../router';
 
 export function ForgotPasswordComponent(): HTMLElement {
@@ -36,6 +39,7 @@ export function ForgotPasswordComponent(): HTMLElement {
   const form = container.querySelector('#forgot-password-form') as HTMLFormElement;
   const otpSection = container.querySelector('#otp-section') as HTMLElement;
 
+<<<<<<< HEAD
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = (container.querySelector('#email') as HTMLInputElement).value;
@@ -62,6 +66,23 @@ export function ForgotPasswordComponent(): HTMLElement {
       router.navigate('/login');
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to reset password');
+=======
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    // In production, this would send OTP to email
+    alert('OTP sent to your email (Demo: OTP is 123456)');
+    otpSection.style.display = 'block';
+  });
+
+  container.querySelector('#reset-password-btn')?.addEventListener('click', () => {
+    const otp = (container.querySelector('#otp') as HTMLInputElement).value;
+    // In production, verify OTP
+    if (otp === '123456') {
+      alert('Password reset successful!');
+      router.navigate('/login');
+    } else {
+      alert('Invalid OTP');
+>>>>>>> 0f5c4b4644f516bf6b6d81e23e64491783026e0d
     }
   });
 

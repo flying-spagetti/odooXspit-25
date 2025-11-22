@@ -1,16 +1,21 @@
-import { store } from '../store';
+import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { Receipt } from '../types';
 
-export function ReceiptsComponent(): HTMLElement {
+export async function ReceiptsComponent(): Promise<HTMLElement> {
   const container = document.createElement('div');
   container.className = 'receipts-page';
 
-  function renderReceipts() {
+  container.innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const warehouses = await store.getWarehouses();
+
+  async function renderReceipts() {
     const receiptsList = container.querySelector('#receipts-list');
     if (!receiptsList) return;
 
-    const receipts = store.getReceipts();
+    const receipts = await store.getReceipts();
     receiptsList.innerHTML = `
       <table>
         <thead>
@@ -29,7 +34,7 @@ export function ReceiptsComponent(): HTMLElement {
             <tr>
               <td>${receipt.id.substring(0, 8)}</td>
               <td>${receipt.supplier}</td>
-              <td>${store.getWarehouse(receipt.warehouseId)?.name || 'N/A'}</td>
+              <td>${warehouses.find(w => w.id === receipt.warehouseId)?.name || 'N/A'}</td>
               <td>${receipt.items.length} items</td>
               <td><span class="status-badge status-${receipt.status}">${receipt.status}</span></td>
               <td>${receipt.createdAt.toLocaleDateString()}</td>
@@ -46,26 +51,28 @@ export function ReceiptsComponent(): HTMLElement {
     `;
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const receiptId = (btn as HTMLElement).dataset.receiptId;
         if (receiptId) {
           const receipt = receipts.find((r) => r.id === receiptId);
           if (receipt) {
             receipt.status = 'done';
             // Re-create to trigger stock update
-            store.createReceipt(receipt);
-            renderReceipts();
+            await store.createReceipt(receipt);
+            await renderReceipts();
           }
         }
       });
     });
   }
 
-  function showReceiptModal(receipt?: Receipt) {
+  async function showReceiptModal(receipt?: Receipt) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    const products = store.getProducts();
-    const warehouses = store.getWarehouses();
+    const [products, modalWarehouses] = await Promise.all([
+      store.getProducts(),
+      store.getWarehouses(),
+    ]);
     let items: Array<{ productId: string; quantity: number; unitPrice?: number }> = receipt?.items || [];
 
     modal.innerHTML = `
@@ -82,7 +89,7 @@ export function ReceiptsComponent(): HTMLElement {
           <div class="form-group">
             <label>Warehouse</label>
             <select id="receipt-warehouse" required>
-              ${warehouses.map((w) => `<option value="${w.id}" ${receipt?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
+              ${modalWarehouses.map((w) => `<option value="${w.id}" ${receipt?.warehouseId === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -150,8 +157,8 @@ export function ReceiptsComponent(): HTMLElement {
       });
     });
 
-    const form = modal.querySelector('#receipt-form') as HTMLFormElement;
-    form.addEventListener('submit', (e) => {
+      const form = modal.querySelector('#receipt-form') as HTMLFormElement;
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const supplier = (modal.querySelector('#receipt-supplier') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#receipt-warehouse') as HTMLSelectElement).value;
@@ -167,24 +174,29 @@ export function ReceiptsComponent(): HTMLElement {
         }
       });
 
-      if (receipt) {
-        receipt.supplier = supplier;
-        receipt.warehouseId = warehouseId;
-        receipt.status = status;
-        receipt.items = formItems;
-        store.createReceipt(receipt);
-      } else {
-        store.createReceipt({
-          type: 'receipt',
-          supplier,
-          warehouseId,
-          status,
-          items: formItems,
-        });
-      }
+      try {
+        if (receipt) {
+          receipt.supplier = supplier;
+          receipt.warehouseId = warehouseId;
+          receipt.status = status;
+          receipt.items = formItems;
+          await store.createReceipt(receipt);
+        } else {
+          await store.createReceipt({
+            type: 'receipt',
+            supplier,
+            warehouseId,
+            status,
+            items: formItems,
+          });
+        }
 
-      document.body.removeChild(modal);
-      renderReceipts();
+        document.body.removeChild(modal);
+        await renderReceipts();
+      } catch (error) {
+        alert('Failed to save receipt. Make sure the backend server is running.');
+        console.error(error);
+      }
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -203,12 +215,16 @@ export function ReceiptsComponent(): HTMLElement {
     <div id="receipts-list"></div>
   `;
 
-  container.querySelector('#add-receipt-btn')?.addEventListener('click', () => {
-    showReceiptModal();
+  container.querySelector('#add-receipt-btn')?.addEventListener('click', async () => {
+    await showReceiptModal();
   });
 
-  renderReceipts();
+  await renderReceipts();
 
   return LayoutComponent(container);
+  } catch (error) {
+    container.innerHTML = '<div class="error">Error loading receipts</div>';
+    return LayoutComponent(container);
+  }
 }
 

@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import { router } from '../../router';
 
 export function ForgotPasswordComponent(): HTMLElement {
@@ -35,21 +36,32 @@ export function ForgotPasswordComponent(): HTMLElement {
   const form = container.querySelector('#forgot-password-form') as HTMLFormElement;
   const otpSection = container.querySelector('#otp-section') as HTMLElement;
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // In production, this would send OTP to email
-    alert('OTP sent to your email (Demo: OTP is 123456)');
-    otpSection.style.display = 'block';
+    const email = (container.querySelector('#email') as HTMLInputElement).value;
+    try {
+      const response = await api.forgotPassword(email);
+      alert(response.data.message || 'OTP sent to your email');
+      if (response.data.otp) {
+        alert(`Development OTP: ${response.data.otp}`);
+      }
+      otpSection.style.display = 'block';
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to send OTP');
+    }
   });
 
-  container.querySelector('#reset-password-btn')?.addEventListener('click', () => {
+  container.querySelector('#reset-password-btn')?.addEventListener('click', async () => {
+    const email = (container.querySelector('#email') as HTMLInputElement).value;
     const otp = (container.querySelector('#otp') as HTMLInputElement).value;
-    // In production, verify OTP
-    if (otp === '123456') {
+    const newPassword = (container.querySelector('#new-password') as HTMLInputElement).value;
+    
+    try {
+      await api.resetPassword(email, otp, newPassword);
       alert('Password reset successful!');
       router.navigate('/login');
-    } else {
-      alert('Invalid OTP');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to reset password');
     }
   });
 

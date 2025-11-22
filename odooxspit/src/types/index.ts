@@ -50,6 +50,7 @@ export interface Document {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  scheduledDate?: Date;
 }
 
 // Receipt (Incoming Stock)

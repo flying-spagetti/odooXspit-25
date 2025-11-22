@@ -2,15 +2,15 @@ import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { Warehouse } from '../types';
 
-export function SettingsComponent(): HTMLElement {
+export async function SettingsComponent(): Promise<HTMLElement> {
   const container = document.createElement('div');
   container.className = 'settings-page';
 
-  function renderWarehouses() {
+  async function renderWarehouses() {
     const warehousesList = container.querySelector('#warehouses-list');
     if (!warehousesList) return;
 
-    const warehouses = store.getWarehouses();
+    const warehouses = await store.getWarehouses();
     warehousesList.innerHTML = `
       <table>
         <thead>
@@ -37,16 +37,17 @@ export function SettingsComponent(): HTMLElement {
     `;
 
     container.querySelectorAll('.btn-edit').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const warehouseId = (btn as HTMLElement).dataset.warehouseId;
         if (warehouseId) {
-          showWarehouseModal(store.getWarehouse(warehouseId));
+          const warehouse = await store.getWarehouse(warehouseId);
+          showWarehouseModal(warehouse || undefined);
         }
       });
     });
   }
 
-  function showWarehouseModal(warehouse?: Warehouse) {
+  async function showWarehouseModal(warehouse?: Warehouse) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
@@ -79,22 +80,26 @@ export function SettingsComponent(): HTMLElement {
     document.body.appendChild(modal);
 
     const form = modal.querySelector('#warehouse-form') as HTMLFormElement;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = (modal.querySelector('#warehouse-name') as HTMLInputElement).value;
       const location = (modal.querySelector('#warehouse-location') as HTMLInputElement).value;
       const description = (modal.querySelector('#warehouse-description') as HTMLTextAreaElement).value;
 
-      if (warehouse) {
-        warehouse.name = name;
-        warehouse.location = location;
-        warehouse.description = description;
-      } else {
-        store.createWarehouse({ name, location, description });
+      try {
+        if (warehouse) {
+          // Update warehouse
+          await store.updateWarehouse(warehouse.id, { name, location, description });
+        } else {
+          // Create warehouse
+          await store.createWarehouse({ name, location, description });
+        }
+        document.body.removeChild(modal);
+        await renderWarehouses();
+      } catch (error) {
+        alert('Failed to save warehouse');
+        console.error(error);
       }
-
-      document.body.removeChild(modal);
-      renderWarehouses();
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -120,7 +125,7 @@ export function SettingsComponent(): HTMLElement {
     showWarehouseModal();
   });
 
-  renderWarehouses();
+  await renderWarehouses();
 
   return LayoutComponent(container);
 }

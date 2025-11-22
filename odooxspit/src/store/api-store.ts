@@ -86,6 +86,15 @@ class ApiStore {
     return response.data.data;
   }
 
+  async updateWarehouse(id: string, updates: Partial<Warehouse>): Promise<Warehouse | null> {
+    try {
+      const response = await api.updateWarehouse(id, updates);
+      return response.data.data || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Stock Management
   async getProductStock(productId: string, warehouseId: string): Promise<number> {
     try {

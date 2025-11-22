@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 import { updateStock } from '../services/stock.service.js';
+import { generateReceiptReference } from '../utils/reference.js';
 
 export const getReceipts = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -75,7 +76,7 @@ export const getReceipt = asyncHandler(
 
 export const createReceipt = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const { supplier, warehouseId, status, items, scheduledDate } = req.body;
+    const { supplier, warehouseId, status, items, scheduledDate, receiveFrom, responsible } = req.body;
 
     if (!supplier || !warehouseId || !items || !Array.isArray(items)) {
       return res.status(400).json({
@@ -89,12 +90,15 @@ export const createReceipt = asyncHandler(
     try {
       await client.query('BEGIN');
 
+      // Generate reference
+      const reference = await generateReceiptReference();
+
       // Create receipt
       const receiptResult = await client.query(
-        `INSERT INTO receipts (supplier, warehouse_id, status, created_by, scheduled_date)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO receipts (supplier, warehouse_id, status, created_by, scheduled_date, reference, receive_from, responsible)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [supplier, warehouseId, status || 'draft', req.user!.id, scheduledDate || null]
+        [supplier, warehouseId, status || 'draft', req.user!.id, scheduledDate || null, reference, receiveFrom || null, responsible || null]
       );
 
       const receipt = receiptResult.rows[0];
@@ -153,7 +157,7 @@ export const createReceipt = asyncHandler(
 export const updateReceipt = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { supplier, warehouseId, status, items, scheduledDate } = req.body;
+    const { supplier, warehouseId, status, items, scheduledDate, receiveFrom, responsible } = req.body;
 
     const client = await pool.connect();
 
@@ -184,10 +188,12 @@ export const updateReceipt = asyncHandler(
              warehouse_id = COALESCE($2, warehouse_id),
              status = COALESCE($3, status),
              scheduled_date = COALESCE($4, scheduled_date),
+             receive_from = COALESCE($5, receive_from),
+             responsible = COALESCE($6, responsible),
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $5
+         WHERE id = $7
          RETURNING *`,
-        [supplier, warehouseId, newStatus, scheduledDate, id]
+        [supplier, warehouseId, newStatus, scheduledDate, receiveFrom, responsible, id]
       );
 
       // Update items if provided

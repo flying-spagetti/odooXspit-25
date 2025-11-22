@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 import { updateStock } from '../services/stock.service.js';
+import { generateDeliveryReference } from '../utils/reference.js';
 
 export const getDeliveries = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -74,7 +75,7 @@ export const getDelivery = asyncHandler(
 
 export const createDelivery = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const { customer, warehouseId, status, items, scheduledDate } = req.body;
+    const { customer, warehouseId, status, items, scheduledDate, deliveryAddress, responsible, operationType } = req.body;
 
     if (!customer || !warehouseId || !items || !Array.isArray(items)) {
       return res.status(400).json({
@@ -88,11 +89,14 @@ export const createDelivery = asyncHandler(
     try {
       await client.query('BEGIN');
 
+      // Generate reference
+      const reference = await generateDeliveryReference();
+
       const deliveryResult = await client.query(
-        `INSERT INTO deliveries (customer, warehouse_id, status, created_by, scheduled_date)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO deliveries (customer, warehouse_id, status, created_by, scheduled_date, reference, delivery_address, responsible, operation_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
-        [customer, warehouseId, status || 'draft', req.user!.id, scheduledDate || null]
+        [customer, warehouseId, status || 'draft', req.user!.id, scheduledDate || null, reference, deliveryAddress || null, responsible || null, operationType || null]
       );
 
       const delivery = deliveryResult.rows[0];
@@ -148,7 +152,7 @@ export const createDelivery = asyncHandler(
 export const updateDelivery = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { customer, warehouseId, status, items, scheduledDate } = req.body;
+    const { customer, warehouseId, status, items, scheduledDate, deliveryAddress, responsible, operationType } = req.body;
 
     const client = await pool.connect();
 
@@ -177,10 +181,13 @@ export const updateDelivery = asyncHandler(
              warehouse_id = COALESCE($2, warehouse_id),
              status = COALESCE($3, status),
              scheduled_date = COALESCE($4, scheduled_date),
+             delivery_address = COALESCE($5, delivery_address),
+             responsible = COALESCE($6, responsible),
+             operation_type = COALESCE($7, operation_type),
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $5
+         WHERE id = $8
          RETURNING *`,
-        [customer, warehouseId, newStatus, scheduledDate, id]
+        [customer, warehouseId, newStatus, scheduledDate, deliveryAddress, responsible, operationType, id]
       );
 
       if (items && Array.isArray(items)) {

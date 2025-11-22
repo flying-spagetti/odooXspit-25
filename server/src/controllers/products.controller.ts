@@ -50,11 +50,67 @@ export const createProduct = asyncHandler(
       });
     }
 
+    // Validate and sanitize inputs
+    if (typeof name !== 'string' || name.trim().length === 0 || name.length > 255) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Name must be a non-empty string (max 255 characters)',
+      });
+    }
+
+    if (typeof sku !== 'string' || sku.trim().length === 0 || sku.length > 100) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'SKU must be a non-empty string (max 100 characters)',
+      });
+    }
+
+    if (typeof category !== 'string' || category.trim().length === 0 || category.length > 255) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Category must be a non-empty string (max 255 characters)',
+      });
+    }
+
+    if (typeof unitOfMeasure !== 'string' || unitOfMeasure.trim().length === 0 || unitOfMeasure.length > 50) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Unit of measure must be a non-empty string (max 50 characters)',
+      });
+    }
+
+    // Validate reorder levels if provided
+    if (reorderLevel !== undefined && reorderLevel !== null) {
+      const reorderLevelNum = Number(reorderLevel);
+      if (!Number.isInteger(reorderLevelNum) || reorderLevelNum < 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Reorder level must be a non-negative integer',
+        });
+      }
+    }
+
+    if (reorderQuantity !== undefined && reorderQuantity !== null) {
+      const reorderQuantityNum = Number(reorderQuantity);
+      if (!Number.isInteger(reorderQuantityNum) || reorderQuantityNum < 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Reorder quantity must be a non-negative integer',
+        });
+      }
+    }
+
+    // Sanitize string inputs
+    const sanitizedName = name.trim();
+    const sanitizedSku = sku.trim().toUpperCase();
+    const sanitizedCategory = category.trim();
+    const sanitizedUnit = unitOfMeasure.trim();
+
     const result = await pool.query(
       `INSERT INTO products (name, sku, category, unit_of_measure, reorder_level, reorder_quantity)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, sku, category, unitOfMeasure, reorderLevel || null, reorderQuantity || null]
+      [sanitizedName, sanitizedSku, sanitizedCategory, sanitizedUnit, reorderLevel || null, reorderQuantity || null]
     );
 
     res.status(201).json({

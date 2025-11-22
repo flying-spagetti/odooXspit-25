@@ -40,7 +40,7 @@ export const getWarehouse = asyncHandler(
 
 export const createWarehouse = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const { name, location, description } = req.body;
+    const { name, location, description, shortCode } = req.body;
 
     if (!name || !location) {
       return res.status(400).json({
@@ -50,10 +50,10 @@ export const createWarehouse = asyncHandler(
     }
 
     const result = await pool.query(
-      `INSERT INTO warehouses (name, location, description)
-       VALUES ($1, $2, $3)
+      `INSERT INTO warehouses (name, location, description, short_code)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [name, location, description || null]
+      [name, location, description || null, shortCode || null]
     );
 
     res.status(201).json({
@@ -66,17 +66,18 @@ export const createWarehouse = asyncHandler(
 export const updateWarehouse = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { name, location, description } = req.body;
+    const { name, location, description, shortCode } = req.body;
 
     const result = await pool.query(
       `UPDATE warehouses
        SET name = COALESCE($1, name),
            location = COALESCE($2, location),
            description = COALESCE($3, description),
+           short_code = COALESCE($4, short_code),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4
+       WHERE id = $5
        RETURNING *`,
-      [name, location, description, id]
+      [name, location, description, shortCode, id]
     );
 
     if (result.rows.length === 0) {

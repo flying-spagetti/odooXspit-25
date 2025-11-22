@@ -2,15 +2,17 @@ import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { StockAdjustment } from '../types';
 
-export function AdjustmentsComponent(): HTMLElement {
+export async function AdjustmentsComponent(): Promise<HTMLElement> {
   const container = document.createElement('div');
   container.className = 'adjustments-page';
 
-  function renderAdjustments() {
+  const warehouses = await store.getWarehouses();
+
+  async function renderAdjustments() {
     const adjustmentsList = container.querySelector('#adjustments-list');
     if (!adjustmentsList) return;
 
-    const adjustments = store.getAdjustments();
+    const adjustments = await store.getAdjustments();
     adjustmentsList.innerHTML = `
       <table>
         <thead>
@@ -28,7 +30,7 @@ export function AdjustmentsComponent(): HTMLElement {
           ${adjustments.map((adjustment) => `
             <tr>
               <td>${adjustment.id.substring(0, 8)}</td>
-              <td>${store.getWarehouse(adjustment.warehouseId)?.name || 'N/A'}</td>
+              <td>${warehouses.find(w => w.id === adjustment.warehouseId)?.name || 'N/A'}</td>
               <td>${adjustment.reason}</td>
               <td>${adjustment.items.length} items</td>
               <td><span class="status-badge status-${adjustment.status}">${adjustment.status}</span></td>
@@ -46,14 +48,19 @@ export function AdjustmentsComponent(): HTMLElement {
     `;
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const adjustmentId = (btn as HTMLElement).dataset.adjustmentId;
         if (adjustmentId) {
-          const adjustment = adjustments.find((a) => a.id === adjustmentId);
-          if (adjustment) {
-            adjustment.status = 'done';
-            store.createAdjustment(adjustment);
-            renderAdjustments();
+          try {
+            const validatedAdjustment = await store.validateAdjustment(adjustmentId);
+            if (validatedAdjustment) {
+              await renderAdjustments();
+            } else {
+              alert('Failed to validate adjustment. Please try again.');
+            }
+          } catch (error) {
+            alert('Failed to validate adjustment. Please try again.');
+            console.error('Validate adjustment error:', error);
           }
         }
       });
@@ -186,7 +193,7 @@ export function AdjustmentsComponent(): HTMLElement {
     });
 
     const form = modal.querySelector('#adjustment-form') as HTMLFormElement;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const warehouseId = (modal.querySelector('#adjustment-warehouse') as HTMLSelectElement).value;
       const reason = (modal.querySelector('#adjustment-reason') as HTMLInputElement).value;
@@ -207,24 +214,40 @@ export function AdjustmentsComponent(): HTMLElement {
         }
       });
 
-      if (adjustment) {
-        adjustment.warehouseId = warehouseId;
-        adjustment.reason = reason;
-        adjustment.status = status;
-        adjustment.items = formItems;
-        store.createAdjustment(adjustment);
-      } else {
-        store.createAdjustment({
-          type: 'adjustment',
-          warehouseId,
-          reason,
-          status,
-          items: formItems,
-        });
+      if (formItems.length === 0) {
+        alert('Please add at least one item to the adjustment.');
+        return;
       }
 
-      document.body.removeChild(modal);
-      renderAdjustments();
+      if (!reason || reason.trim() === '') {
+        alert('Please enter a reason for the adjustment.');
+        return;
+      }
+
+      try {
+        if (adjustment) {
+          await store.updateAdjustment(adjustment.id, {
+            warehouseId,
+            reason,
+            status,
+            items: formItems,
+          });
+        } else {
+          await store.createAdjustment({
+            type: 'adjustment',
+            warehouseId,
+            reason,
+            status,
+            items: formItems,
+          });
+        }
+
+        document.body.removeChild(modal);
+        await renderAdjustments();
+      } catch (error) {
+        alert('Failed to save adjustment. Please try again.');
+        console.error('Adjustment save error:', error);
+      }
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -243,11 +266,11 @@ export function AdjustmentsComponent(): HTMLElement {
     <div id="adjustments-list"></div>
   `;
 
-  container.querySelector('#add-adjustment-btn')?.addEventListener('click', () => {
-    showAdjustmentModal();
+  container.querySelector('#add-adjustment-btn')?.addEventListener('click', async () => {
+    await showAdjustmentModal();
   });
 
-  renderAdjustments();
+  await renderAdjustments();
 
   return LayoutComponent(container);
 }

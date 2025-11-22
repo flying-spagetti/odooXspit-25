@@ -5,9 +5,19 @@ import { router } from '../../router';
 export function LoginComponent(): HTMLElement {
   const container = document.createElement('div');
   container.className = 'auth-container';
+  container.style.position = 'relative';
+  container.style.background = '#fefcff';
 
   container.innerHTML = `
-    <div class="auth-card">
+    <div class="auth-background" style="
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background-image: 
+        radial-gradient(circle at 30% 70%, rgba(173, 216, 230, 0.35), transparent 60%),
+        radial-gradient(circle at 70% 30%, rgba(255, 182, 193, 0.4), transparent 60%);
+    "></div>
+    <div class="auth-card" style="position: relative; z-index: 1;">
       <h1>StockMaster</h1>
       <h2>Login</h2>
       <form id="login-form">
@@ -59,4 +69,3 @@ export function LoginComponent(): HTMLElement {
 
   return container;
 }
-

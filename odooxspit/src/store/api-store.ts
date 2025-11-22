@@ -183,6 +183,15 @@ class ApiStore {
     }
   }
 
+  async validateReceipt(id: string): Promise<Receipt | null> {
+    try {
+      const response = await api.validateReceipt(id);
+      return this.mapReceipt(response.data.data);
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Delivery Management
   async getDeliveries(): Promise<DeliveryOrder[]> {
     const response = await api.getDeliveries();
@@ -218,6 +227,15 @@ class ApiStore {
     }
   }
 
+  async validateDelivery(id: string): Promise<DeliveryOrder | null> {
+    try {
+      const response = await api.validateDelivery(id);
+      return this.mapDelivery(response.data.data);
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Transfer Management
   async getTransfers(): Promise<InternalTransfer[]> {
     const response = await api.getTransfers();
@@ -238,11 +256,61 @@ class ApiStore {
     return this.mapTransfer(response.data.data);
   }
 
+  async updateTransfer(id: string, updates: Partial<InternalTransfer>): Promise<InternalTransfer | null> {
+    try {
+      const response = await api.updateTransfer(id, {
+        fromWarehouseId: updates.fromWarehouseId,
+        toWarehouseId: updates.toWarehouseId,
+        status: updates.status,
+        items: updates.items,
+        scheduledDate: updates.scheduledDate ? updates.scheduledDate.toISOString().split('T')[0] : undefined,
+      });
+      return this.mapTransfer(response.data.data);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async validateTransfer(id: string): Promise<InternalTransfer | null> {
+    try {
+      const response = await api.validateTransfer(id);
+      return this.mapTransfer(response.data.data);
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Adjustment Management
   async getAdjustments(): Promise<StockAdjustment[]> {
     const response = await api.getAdjustments();
     const adjustments = response.data.data || [];
     return adjustments.map(this.mapAdjustment);
+  }
+
+  async updateAdjustment(id: string, updates: Partial<StockAdjustment>): Promise<StockAdjustment | null> {
+    try {
+      const response = await api.updateAdjustment(id, {
+        warehouseId: updates.warehouseId,
+        reason: updates.reason,
+        status: updates.status,
+        items: updates.items?.map(item => ({
+          productId: item.productId,
+          countedQuantity: item.countedQuantity,
+        })),
+      });
+      return this.mapAdjustment(response.data.data);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async validateAdjustment(id: string): Promise<StockAdjustment | null> {
+    try {
+      const response = await api.validateAdjustment(id);
+      return this.mapAdjustment(response.data.data);
+    } catch (error) {
+      return null;
+    }
   }
 
   async createAdjustment(

@@ -51,11 +51,16 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
       btn.addEventListener('click', async () => {
         const deliveryId = (btn as HTMLElement).dataset.deliveryId;
         if (deliveryId) {
-          const allDeliveries = await store.getDeliveries();
-          const delivery = allDeliveries.find((d) => d.id === deliveryId);
-          if (delivery) {
-            await store.updateDelivery(delivery.id, { status: 'done' });
-            await renderDeliveries();
+          try {
+            const validatedDelivery = await store.validateDelivery(deliveryId);
+            if (validatedDelivery) {
+              await renderDeliveries();
+            } else {
+              alert('Failed to validate delivery. Please try again.');
+            }
+          } catch (error) {
+            alert('Failed to validate delivery. Please try again.');
+            console.error('Validate delivery error:', error);
           }
         }
       });

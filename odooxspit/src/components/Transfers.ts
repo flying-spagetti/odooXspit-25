@@ -2,15 +2,17 @@ import { store } from '../store/api-store';
 import { LayoutComponent } from './Layout';
 import type { InternalTransfer } from '../types';
 
-export function TransfersComponent(): HTMLElement {
+export async function TransfersComponent(): Promise<HTMLElement> {
   const container = document.createElement('div');
   container.className = 'transfers-page';
 
-  function renderTransfers() {
+  const warehouses = await store.getWarehouses();
+
+  async function renderTransfers() {
     const transfersList = container.querySelector('#transfers-list');
     if (!transfersList) return;
 
-    const transfers = store.getTransfers();
+    const transfers = await store.getTransfers();
     transfersList.innerHTML = `
       <table>
         <thead>
@@ -28,8 +30,8 @@ export function TransfersComponent(): HTMLElement {
           ${transfers.map((transfer) => `
             <tr>
               <td>${transfer.id.substring(0, 8)}</td>
-              <td>${store.getWarehouse(transfer.fromWarehouseId)?.name || 'N/A'}</td>
-              <td>${store.getWarehouse(transfer.toWarehouseId)?.name || 'N/A'}</td>
+              <td>${warehouses.find(w => w.id === transfer.fromWarehouseId)?.name || 'N/A'}</td>
+              <td>${warehouses.find(w => w.id === transfer.toWarehouseId)?.name || 'N/A'}</td>
               <td>${transfer.items.length} items</td>
               <td><span class="status-badge status-${transfer.status}">${transfer.status}</span></td>
               <td>${transfer.createdAt.toLocaleDateString()}</td>
@@ -46,14 +48,19 @@ export function TransfersComponent(): HTMLElement {
     `;
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const transferId = (btn as HTMLElement).dataset.transferId;
         if (transferId) {
-          const transfer = transfers.find((t) => t.id === transferId);
-          if (transfer) {
-            transfer.status = 'done';
-            store.createTransfer(transfer);
-            renderTransfers();
+          try {
+            const validatedTransfer = await store.validateTransfer(transferId);
+            if (validatedTransfer) {
+              await renderTransfers();
+            } else {
+              alert('Failed to validate transfer. Please try again.');
+            }
+          } catch (error) {
+            alert('Failed to validate transfer. Please try again.');
+            console.error('Validate transfer error:', error);
           }
         }
       });
@@ -148,7 +155,7 @@ export function TransfersComponent(): HTMLElement {
     });
 
     const form = modal.querySelector('#transfer-form') as HTMLFormElement;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fromWarehouseId = (modal.querySelector('#transfer-from') as HTMLSelectElement).value;
       const toWarehouseId = (modal.querySelector('#transfer-to') as HTMLSelectElement).value;
@@ -163,25 +170,36 @@ export function TransfersComponent(): HTMLElement {
         }
       });
 
-      if (transfer) {
-        transfer.fromWarehouseId = fromWarehouseId;
-        transfer.toWarehouseId = toWarehouseId;
-        transfer.status = status;
-        transfer.items = formItems;
-        store.createTransfer(transfer);
-      } else {
-        store.createTransfer({
-          type: 'transfer',
-          fromWarehouseId,
-          toWarehouseId,
-          warehouseId: fromWarehouseId, // For document base
-          status,
-          items: formItems,
-        });
+      if (formItems.length === 0) {
+        alert('Please add at least one item to the transfer.');
+        return;
       }
 
-      document.body.removeChild(modal);
-      renderTransfers();
+      try {
+        if (transfer) {
+          await store.updateTransfer(transfer.id, {
+            fromWarehouseId,
+            toWarehouseId,
+            status,
+            items: formItems,
+          });
+        } else {
+          await store.createTransfer({
+            type: 'transfer',
+            fromWarehouseId,
+            toWarehouseId,
+            warehouseId: fromWarehouseId, // For document base
+            status,
+            items: formItems,
+          });
+        }
+
+        document.body.removeChild(modal);
+        await renderTransfers();
+      } catch (error) {
+        alert('Failed to save transfer. Please try again.');
+        console.error('Transfer save error:', error);
+      }
     });
 
     modal.querySelector('.modal-close')?.addEventListener('click', () => {
@@ -200,11 +218,11 @@ export function TransfersComponent(): HTMLElement {
     <div id="transfers-list"></div>
   `;
 
-  container.querySelector('#add-transfer-btn')?.addEventListener('click', () => {
-    showTransferModal();
+  container.querySelector('#add-transfer-btn')?.addEventListener('click', async () => {
+    await showTransferModal();
   });
 
-  renderTransfers();
+  await renderTransfers();
 
   return LayoutComponent(container);
 }

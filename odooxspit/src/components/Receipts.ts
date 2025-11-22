@@ -54,12 +54,16 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
       btn.addEventListener('click', async () => {
         const receiptId = (btn as HTMLElement).dataset.receiptId;
         if (receiptId) {
-          const receipt = receipts.find((r) => r.id === receiptId);
-          if (receipt) {
-            receipt.status = 'done';
-            // Re-create to trigger stock update
-            await store.createReceipt(receipt);
-            await renderReceipts();
+          try {
+            const validatedReceipt = await store.validateReceipt(receiptId);
+            if (validatedReceipt) {
+              await renderReceipts();
+            } else {
+              alert('Failed to validate receipt. Please try again.');
+            }
+          } catch (error) {
+            alert('Failed to validate receipt. Please try again.');
+            console.error('Validate receipt error:', error);
           }
         }
       });

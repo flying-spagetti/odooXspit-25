@@ -69,27 +69,38 @@ class ApiStore {
   // Warehouse Management
   async getWarehouses(): Promise<Warehouse[]> {
     const response = await api.getWarehouses();
-    return response.data.data || [];
+    const warehouses = response.data.data || [];
+    return warehouses.map(this.mapWarehouse);
   }
 
   async getWarehouse(id: string): Promise<Warehouse | null> {
     try {
       const response = await api.getWarehouse(id);
-      return response.data.data || null;
+      return response.data.data ? this.mapWarehouse(response.data.data) : null;
     } catch (error) {
       return null;
     }
   }
 
+  private mapWarehouse(data: any): Warehouse {
+    return {
+      id: data.id,
+      name: data.name,
+      location: data.location,
+      description: data.description,
+      shortCode: data.short_code,
+    };
+  }
+
   async createWarehouse(warehouse: Omit<Warehouse, 'id'>): Promise<Warehouse> {
     const response = await api.createWarehouse(warehouse);
-    return response.data.data;
+    return this.mapWarehouse(response.data.data);
   }
 
   async updateWarehouse(id: string, updates: Partial<Warehouse>): Promise<Warehouse | null> {
     try {
       const response = await api.updateWarehouse(id, updates);
-      return response.data.data || null;
+      return response.data.data ? this.mapWarehouse(response.data.data) : null;
     } catch (error) {
       return null;
     }
@@ -164,6 +175,8 @@ class ApiStore {
       status: receipt.status,
       items: receipt.items,
       scheduledDate: receipt.scheduledDate ? receipt.scheduledDate.toISOString().split('T')[0] : undefined,
+      receiveFrom: receipt.receiveFrom,
+      responsible: receipt.responsible,
     });
     return this.mapReceipt(response.data.data);
   }
@@ -176,6 +189,8 @@ class ApiStore {
         status: updates.status,
         items: updates.items,
         scheduledDate: updates.scheduledDate ? updates.scheduledDate.toISOString().split('T')[0] : undefined,
+        receiveFrom: updates.receiveFrom,
+        responsible: updates.responsible,
       });
       return this.mapReceipt(response.data.data);
     } catch (error) {
@@ -208,6 +223,9 @@ class ApiStore {
       status: delivery.status,
       items: delivery.items,
       scheduledDate: delivery.scheduledDate ? delivery.scheduledDate.toISOString().split('T')[0] : undefined,
+      deliveryAddress: delivery.deliveryAddress,
+      responsible: delivery.responsible,
+      operationType: delivery.operationType,
     });
     return this.mapDelivery(response.data.data);
   }
@@ -220,6 +238,9 @@ class ApiStore {
         status: updates.status,
         items: updates.items,
         scheduledDate: updates.scheduledDate ? updates.scheduledDate.toISOString().split('T')[0] : undefined,
+        deliveryAddress: updates.deliveryAddress,
+        responsible: updates.responsible,
+        operationType: updates.operationType,
       });
       return this.mapDelivery(response.data.data);
     } catch (error) {
@@ -371,6 +392,9 @@ class ApiStore {
       updatedAt: new Date(data.updated_at),
       createdBy: data.created_by,
       scheduledDate: data.scheduled_date ? new Date(data.scheduled_date) : undefined,
+      reference: data.reference,
+      receiveFrom: data.receive_from,
+      responsible: data.responsible,
     };
   }
 
@@ -386,6 +410,10 @@ class ApiStore {
       updatedAt: new Date(data.updated_at),
       createdBy: data.created_by,
       scheduledDate: data.scheduled_date ? new Date(data.scheduled_date) : undefined,
+      reference: data.reference,
+      deliveryAddress: data.delivery_address,
+      responsible: data.responsible,
+      operationType: data.operation_type,
     };
   }
 

@@ -56,6 +56,19 @@ class ApiClient {
     return response.data;
   }
 
+  async requestLoginOTP(email: string) {
+    return this.client.post('/auth/login/request-otp', { email });
+  }
+
+  async verifyLoginOTP(email: string, otp: string) {
+    const response = await this.client.post('/auth/login/verify-otp', { email, otp });
+    if (response.data.data.token) {
+      localStorage.setItem('token', response.data.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.data.user));
+    }
+    return response.data;
+  }
+
   async signup(name: string, email: string, password: string, role: string) {
     const response = await this.client.post('/auth/signup', {
       name,

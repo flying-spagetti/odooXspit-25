@@ -16,28 +16,45 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
     if (!receiptsList) return;
 
     const receipts = await store.getReceipts();
+    let searchQuery = '';
+    const searchInput = container.querySelector('#receipt-search') as HTMLInputElement;
+    if (searchInput) {
+      searchQuery = searchInput.value.toLowerCase();
+    }
+
+    const filteredReceipts = receipts.filter((receipt) => {
+      if (!searchQuery) return true;
+      return (
+        receipt.reference?.toLowerCase().includes(searchQuery) ||
+        receipt.supplier?.toLowerCase().includes(searchQuery) ||
+        receipt.receiveFrom?.toLowerCase().includes(searchQuery)
+      );
+    });
+
     receiptsList.innerHTML = `
       <table>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Supplier</th>
+            <th>Reference</th>
+            <th>Receive From</th>
             <th>Warehouse</th>
             <th>Items</th>
+            <th>Schedule Date</th>
             <th>Status</th>
-            <th>Date</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          ${receipts.map((receipt) => `
+          ${filteredReceipts.length === 0 ? `
+            <tr><td colspan="7" class="empty-state">No receipts found</td></tr>
+          ` : filteredReceipts.map((receipt) => `
             <tr>
-              <td>${receipt.id.substring(0, 8)}</td>
-              <td>${receipt.supplier}</td>
+              <td>${receipt.reference || receipt.id.substring(0, 8)}</td>
+              <td>${receipt.receiveFrom || receipt.supplier || 'N/A'}</td>
               <td>${warehouses.find(w => w.id === receipt.warehouseId)?.name || 'N/A'}</td>
               <td>${receipt.items.length} items</td>
+              <td>${receipt.scheduledDate ? new Date(receipt.scheduledDate).toLocaleDateString() : '-'}</td>
               <td><span class="status-badge status-${receipt.status}">${receipt.status}</span></td>
-              <td>${receipt.createdAt.toLocaleDateString()}</td>
               <td>
                 <button class="btn btn-sm btn-view" data-receipt-id="${receipt.id}">View</button>
                 ${receipt.status !== 'done' && receipt.status !== 'canceled' ? `
@@ -86,9 +103,10 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
           <button class="modal-close">&times;</button>
         </div>
         <form id="receipt-form">
+          ${receipt?.reference ? `<div class="form-group"><label>Reference</label><input type="text" value="${receipt.reference}" readonly /></div>` : ''}
           <div class="form-group">
-            <label>Supplier</label>
-            <input type="text" id="receipt-supplier" value="${receipt?.supplier || ''}" required />
+            <label>Receive From</label>
+            <input type="text" id="receipt-receive-from" value="${receipt?.receiveFrom || receipt?.supplier || ''}" required />
           </div>
           <div class="form-group">
             <label>Warehouse</label>
@@ -97,17 +115,20 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
             </select>
           </div>
           <div class="form-group">
+            <label>Responsible</label>
+            <input type="text" id="receipt-responsible" value="${receipt?.responsible || ''}" />
+          </div>
+          <div class="form-group">
+            <label>Schedule Date</label>
+            <input type="date" id="receipt-scheduled-date" value="${receipt?.scheduledDate ? new Date(receipt.scheduledDate).toISOString().split('T')[0] : ''}" />
+          </div>
+          <div class="form-group">
             <label>Status</label>
             <select id="receipt-status">
               <option value="draft" ${receipt?.status === 'draft' ? 'selected' : ''}>Draft</option>
-              <option value="waiting" ${receipt?.status === 'waiting' ? 'selected' : ''}>Waiting</option>
               <option value="ready" ${receipt?.status === 'ready' ? 'selected' : ''}>Ready</option>
               <option value="done" ${receipt?.status === 'done' ? 'selected' : ''}>Done</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Scheduled Date (Optional)</label>
-            <input type="date" id="receipt-scheduled-date" value="${receipt?.scheduledDate ? new Date(receipt.scheduledDate).toISOString().split('T')[0] : ''}" />
           </div>
           <div class="form-group">
             <label>Items</label>
@@ -168,8 +189,9 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
       const form = modal.querySelector('#receipt-form') as HTMLFormElement;
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const supplier = (modal.querySelector('#receipt-supplier') as HTMLInputElement).value;
+      const receiveFrom = (modal.querySelector('#receipt-receive-from') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#receipt-warehouse') as HTMLSelectElement).value;
+      const responsible = (modal.querySelector('#receipt-responsible') as HTMLInputElement).value;
       const status = (modal.querySelector('#receipt-status') as HTMLSelectElement).value as any;
       const scheduledDateInput = (modal.querySelector('#receipt-scheduled-date') as HTMLInputElement).value;
       const scheduledDate = scheduledDateInput ? scheduledDateInput : undefined;
@@ -200,21 +222,25 @@ export async function ReceiptsComponent(): Promise<HTMLElement> {
         if (receipt) {
           // Update existing receipt
           await store.updateReceipt(receipt.id, {
-            supplier,
+            supplier: receiveFrom,
             warehouseId,
             status,
             items: formItems,
             scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+            receiveFrom,
+            responsible,
           });
         } else {
           // Create new receipt
           await store.createReceipt({
             type: 'receipt',
-            supplier,
+            supplier: receiveFrom, // Keep supplier field for backward compatibility
             warehouseId,
             status,
             items: formItems,
             scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+            receiveFrom,
+            responsible,
           });
         }
 

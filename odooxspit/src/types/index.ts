@@ -35,7 +35,19 @@ export interface Warehouse {
   id: string;
   name: string;
   location: string;
+  shortCode?: string;
   description?: string;
+}
+
+// Location Types (sub-entities of warehouses)
+export interface Location {
+  id: string;
+  warehouseId: string;
+  name: string;
+  shortCode?: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Document Types
@@ -57,6 +69,9 @@ export interface Document {
 export interface Receipt extends Document {
   type: 'receipt';
   supplier: string;
+  reference?: string;
+  receiveFrom?: string;
+  responsible?: string;
   items: ReceiptItem[];
 }
 
@@ -70,6 +85,10 @@ export interface ReceiptItem {
 export interface DeliveryOrder extends Document {
   type: 'delivery';
   customer: string;
+  reference?: string;
+  deliveryAddress?: string;
+  responsible?: string;
+  operationType?: string;
   items: DeliveryItem[];
 }
 

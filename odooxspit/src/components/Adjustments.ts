@@ -67,12 +67,23 @@ export async function AdjustmentsComponent(): Promise<HTMLElement> {
     });
   }
 
-  function showAdjustmentModal(adjustment?: StockAdjustment) {
+  async function showAdjustmentModal(adjustment?: StockAdjustment) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    const products = store.getProducts();
-    const warehouses = store.getWarehouses();
+    const [products, warehouses] = await Promise.all([
+      store.getProducts(),
+      store.getWarehouses(),
+    ]);
     let items: Array<{ productId: string; countedQuantity: number; recordedQuantity: number; difference: number }> = adjustment?.items || [];
+
+    // Get recorded quantities for existing items
+    const itemsWithRecorded = await Promise.all(
+      items.map(async (item) => {
+        const recordedQty = item.recordedQuantity || 
+          await store.getProductStock(item.productId, adjustment?.warehouseId || warehouses[0]?.id || '');
+        return { ...item, recordedQty };
+      })
+    );
 
     modal.innerHTML = `
       <div class="modal-content modal-large">
@@ -103,17 +114,15 @@ export async function AdjustmentsComponent(): Promise<HTMLElement> {
           <div class="form-group">
             <label>Items</label>
             <div id="adjustment-items">
-              ${items.map((item, idx) => {
-                const product = store.getProduct(item.productId);
-                const recordedQty = item.recordedQuantity || store.getProductStock(item.productId, adjustment?.warehouseId || warehouses[0].id);
+              ${itemsWithRecorded.map((item, idx) => {
                 return `
                   <div class="item-row">
                     <select class="item-product" data-index="${idx}">
                       ${products.map((p) => `<option value="${p.id}" ${item.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
                     </select>
-                    <input type="number" class="item-recorded" value="${recordedQty}" data-index="${idx}" placeholder="Recorded" readonly />
+                    <input type="number" class="item-recorded" value="${item.recordedQty}" data-index="${idx}" placeholder="Recorded" readonly />
                     <input type="number" class="item-counted" value="${item.countedQuantity}" data-index="${idx}" placeholder="Counted" />
-                    <span class="item-difference" data-index="${idx}">${item.countedQuantity - recordedQty}</span>
+                    <span class="item-difference" data-index="${idx}">${item.countedQuantity - item.recordedQty}</span>
                     <button type="button" class="btn btn-sm btn-remove-item" data-index="${idx}">Remove</button>
                   </div>
                 `;
@@ -134,7 +143,6 @@ export async function AdjustmentsComponent(): Promise<HTMLElement> {
     // Update difference when counted quantity changes
     modal.querySelectorAll('.item-counted').forEach((input) => {
       input.addEventListener('input', () => {
-        const index = parseInt((input as HTMLElement).dataset.index || '0');
         const row = (input as HTMLElement).closest('.item-row');
         const recorded = parseFloat((row?.querySelector('.item-recorded') as HTMLInputElement).value || '0');
         const counted = parseFloat((input as HTMLInputElement).value || '0');
@@ -145,7 +153,7 @@ export async function AdjustmentsComponent(): Promise<HTMLElement> {
       });
     });
 
-    let itemIndex = items.length;
+    let itemIndex = itemsWithRecorded.length;
     const addItemBtn = modal.querySelector('#add-item-btn');
     addItemBtn?.addEventListener('click', () => {
       const itemsContainer = modal.querySelector('#adjustment-items');

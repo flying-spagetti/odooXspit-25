@@ -16,7 +16,8 @@ export async function SettingsComponent(): Promise<HTMLElement> {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Location</th>
+            <th>Short Code</th>
+            <th>Address</th>
             <th>Description</th>
             <th>Actions</th>
           </tr>
@@ -25,6 +26,7 @@ export async function SettingsComponent(): Promise<HTMLElement> {
           ${warehouses.map((warehouse) => `
             <tr>
               <td>${warehouse.name}</td>
+              <td>${warehouse.shortCode || '-'}</td>
               <td>${warehouse.location}</td>
               <td>${warehouse.description || '-'}</td>
               <td>
@@ -62,7 +64,11 @@ export async function SettingsComponent(): Promise<HTMLElement> {
             <input type="text" id="warehouse-name" value="${warehouse?.name || ''}" required />
           </div>
           <div class="form-group">
-            <label>Location</label>
+            <label>Short Code</label>
+            <input type="text" id="warehouse-short-code" value="${warehouse?.shortCode || ''}" maxlength="50" />
+          </div>
+          <div class="form-group">
+            <label>Address</label>
             <input type="text" id="warehouse-location" value="${warehouse?.location || ''}" required />
           </div>
           <div class="form-group">
@@ -83,16 +89,17 @@ export async function SettingsComponent(): Promise<HTMLElement> {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = (modal.querySelector('#warehouse-name') as HTMLInputElement).value;
+      const shortCode = (modal.querySelector('#warehouse-short-code') as HTMLInputElement).value;
       const location = (modal.querySelector('#warehouse-location') as HTMLInputElement).value;
       const description = (modal.querySelector('#warehouse-description') as HTMLTextAreaElement).value;
 
       try {
         if (warehouse) {
           // Update warehouse
-          await store.updateWarehouse(warehouse.id, { name, location, description });
+          await store.updateWarehouse(warehouse.id, { name, shortCode, location, description });
         } else {
           // Create warehouse
-          await store.createWarehouse({ name, location, description });
+          await store.createWarehouse({ name, shortCode, location, description });
         }
         document.body.removeChild(modal);
         await renderWarehouses();

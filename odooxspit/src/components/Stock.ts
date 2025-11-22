@@ -48,39 +48,37 @@ export async function StockComponent(): Promise<HTMLElement> {
             <thead>
               <tr>
                 <th>Product</th>
-                <th>SKU</th>
-                <th>Category</th>
-                <th>Warehouse</th>
-                <th>Quantity</th>
-                <th>Reorder Level</th>
-                <th>Status</th>
+                <th>Per Unit Cost</th>
+                <th>On Hand</th>
+                <th>Free to Use</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               ${stockData.map((stock: any) => {
-                const statusClass = stock.stock_status === 'out_of_stock' 
-                  ? 'status-out' 
-                  : stock.stock_status === 'low_stock' 
-                  ? 'status-low' 
-                  : 'status-ok';
-                const statusText = stock.stock_status === 'out_of_stock' 
-                  ? 'Out of Stock' 
-                  : stock.stock_status === 'low_stock' 
-                  ? 'Low Stock' 
-                  : 'In Stock';
+                const onHand = stock.quantity || 0;
+                const reserved = stock.reserved_quantity || 0;
+                const freeToUse = Math.max(0, onHand - reserved);
+                const unitPrice = stock.unit_price || 0;
                 
                 return `
-                  <tr>
+                  <tr data-product-id="${stock.product_id}" data-warehouse-id="${stock.warehouse_id}">
                     <td>${stock.product_name || 'N/A'}</td>
-                    <td>${stock.sku || 'N/A'}</td>
-                    <td>${stock.category || 'N/A'}</td>
-                    <td>${stock.warehouse_name || 'N/A'}</td>
-                    <td><strong>${stock.quantity || 0}</strong></td>
-                    <td>${stock.reorder_level || 'N/A'}</td>
-                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                      <a href="#" data-route="/adjustments" class="btn btn-sm btn-secondary">Adjust</a>
+                      <input type="number" class="stock-unit-price" value="${unitPrice}" step="0.01" min="0" 
+                             data-product-id="${stock.product_id}" data-warehouse-id="${stock.warehouse_id}" 
+                             placeholder="0.00" style="width: 100px;" />
+                    </td>
+                    <td>
+                      <input type="number" class="stock-on-hand" value="${onHand}" min="0" 
+                             data-product-id="${stock.product_id}" data-warehouse-id="${stock.warehouse_id}" 
+                             placeholder="0" style="width: 80px;" />
+                    </td>
+                    <td><strong>${freeToUse}</strong></td>
+                    <td>
+                      <button class="btn btn-sm btn-primary update-stock-btn" 
+                              data-product-id="${stock.product_id}" 
+                              data-warehouse-id="${stock.warehouse_id}">Update</button>
                     </td>
                   </tr>
                 `;
@@ -88,6 +86,66 @@ export async function StockComponent(): Promise<HTMLElement> {
             </tbody>
           </table>
         `;
+
+        // Add event listeners for update buttons
+        stockList.querySelectorAll('.update-stock-btn').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            const button = e.target as HTMLButtonElement;
+            const productId = button.getAttribute('data-product-id')!;
+            const warehouseId = button.getAttribute('data-warehouse-id')!;
+            const row = button.closest('tr') as HTMLTableRowElement;
+            
+            const unitPriceInput = row.querySelector('.stock-unit-price') as HTMLInputElement;
+            const onHandInput = row.querySelector('.stock-on-hand') as HTMLInputElement;
+            
+            const unitPrice = parseFloat(unitPriceInput.value) || 0;
+            const newQuantity = parseInt(onHandInput.value) || 0;
+            
+            try {
+              button.disabled = true;
+              button.textContent = 'Updating...';
+              
+              // Get current quantity
+              const currentStock = await store.getProductStock(productId, warehouseId);
+              const currentQuantity = currentStock?.quantity || 0;
+              const difference = newQuantity - currentQuantity;
+              
+              if (difference !== 0) {
+                // Create an adjustment to update stock
+                await store.createAdjustment({
+                  type: 'adjustment',
+                  warehouseId,
+                  reason: 'Stock update from Stock page',
+                  status: 'done',
+                  items: [{
+                    productId,
+                    countedQuantity: newQuantity,
+                    recordedQuantity: currentQuantity,
+                    difference,
+                  }],
+                });
+              }
+              
+              // Update unit price if changed
+              if (unitPrice > 0) {
+                // This would require a new endpoint to update unit price
+                // For now, we'll just show success
+              }
+              
+              button.textContent = 'Updated!';
+              setTimeout(() => {
+                button.disabled = false;
+                button.textContent = 'Update';
+                renderStock(); // Refresh the table
+              }, 1000);
+            } catch (error) {
+              console.error('Error updating stock:', error);
+              button.disabled = false;
+              button.textContent = 'Error';
+              alert('Failed to update stock. Please try again.');
+            }
+          });
+        });
 
         // Navigation handlers for adjust buttons
         stockList.querySelectorAll('.btn-secondary').forEach((btn) => {

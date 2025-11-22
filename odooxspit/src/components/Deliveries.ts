@@ -8,44 +8,116 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
 
   const warehouses = await store.getWarehouses();
 
+  let searchQuery = '';
+  let viewMode: 'list' | 'kanban' = 'list';
+
   async function renderDeliveries() {
     const deliveriesList = container.querySelector('#deliveries-list');
     if (!deliveriesList) return;
 
     const deliveries = await store.getDeliveries();
-    deliveriesList.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Customer</th>
-            <th>Warehouse</th>
-            <th>Items</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${deliveries.map((delivery) => `
+    
+    // Filter by search query
+    const filteredDeliveries = deliveries.filter((delivery) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        delivery.reference?.toLowerCase().includes(query) ||
+        delivery.customer?.toLowerCase().includes(query) ||
+        delivery.deliveryAddress?.toLowerCase().includes(query)
+      );
+    });
+
+    if (viewMode === 'kanban') {
+      // Kanban view grouped by status
+      const grouped = {
+        draft: filteredDeliveries.filter(d => d.status === 'draft'),
+        waiting: filteredDeliveries.filter(d => d.status === 'waiting'),
+        ready: filteredDeliveries.filter(d => d.status === 'ready'),
+        done: filteredDeliveries.filter(d => d.status === 'done'),
+      };
+
+      deliveriesList.innerHTML = `
+        <div class="kanban-view">
+          <div class="kanban-column">
+            <h3>Draft (${grouped.draft.length})</h3>
+            ${grouped.draft.map(d => createKanbanCard(d)).join('')}
+          </div>
+          <div class="kanban-column">
+            <h3>Waiting (${grouped.waiting.length})</h3>
+            ${grouped.waiting.map(d => createKanbanCard(d)).join('')}
+          </div>
+          <div class="kanban-column">
+            <h3>Ready (${grouped.ready.length})</h3>
+            ${grouped.ready.map(d => createKanbanCard(d)).join('')}
+          </div>
+          <div class="kanban-column">
+            <h3>Done (${grouped.done.length})</h3>
+            ${grouped.done.map(d => createKanbanCard(d)).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      // List view
+      deliveriesList.innerHTML = `
+        <table>
+          <thead>
             <tr>
-              <td>${delivery.id.substring(0, 8)}</td>
-              <td>${delivery.customer}</td>
-              <td>${warehouses.find(w => w.id === delivery.warehouseId)?.name || 'N/A'}</td>
-              <td>${delivery.items.length} items</td>
-              <td><span class="status-badge status-${delivery.status}">${delivery.status}</span></td>
-              <td>${delivery.createdAt.toLocaleDateString()}</td>
-              <td>
-                <button class="btn btn-sm btn-view" data-delivery-id="${delivery.id}">View</button>
-                ${delivery.status !== 'done' && delivery.status !== 'canceled' ? `
-                  <button class="btn btn-sm btn-validate" data-delivery-id="${delivery.id}">Validate</button>
-                ` : ''}
-              </td>
+              <th>Reference</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Contact</th>
+              <th>Schedule Date</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
+          </thead>
+          <tbody>
+            ${filteredDeliveries.length === 0 ? `
+              <tr><td colspan="7" class="empty-state">No deliveries found</td></tr>
+            ` : filteredDeliveries.map((delivery) => `
+              <tr>
+                <td>${delivery.reference || delivery.id.substring(0, 8)}</td>
+                <td>${warehouses.find(w => w.id === delivery.warehouseId)?.name || 'N/A'}</td>
+                <td>${delivery.customer || 'N/A'}</td>
+                <td>${delivery.customer || 'N/A'}</td>
+                <td>${delivery.scheduledDate ? new Date(delivery.scheduledDate).toLocaleDateString() : '-'}</td>
+                <td><span class="status-badge status-${delivery.status}">${delivery.status}</span></td>
+                <td>
+                  <button class="btn btn-sm btn-view" data-delivery-id="${delivery.id}">View</button>
+                  ${delivery.status !== 'done' && delivery.status !== 'canceled' ? `
+                    <button class="btn btn-sm btn-validate" data-delivery-id="${delivery.id}">Validate</button>
+                  ` : ''}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function createKanbanCard(delivery: DeliveryOrder) {
+      return `
+        <div class="kanban-card" data-delivery-id="${delivery.id}">
+          <div class="kanban-card-header">
+            <strong>${delivery.reference || delivery.id.substring(0, 8)}</strong>
+            <span class="status-badge status-${delivery.status}">${delivery.status}</span>
+          </div>
+          <div class="kanban-card-body">
+            <p><strong>To:</strong> ${delivery.customer || 'N/A'}</p>
+            <p><strong>From:</strong> ${warehouses.find(w => w.id === delivery.warehouseId)?.name || 'N/A'}</p>
+            ${delivery.scheduledDate ? `<p><strong>Schedule:</strong> ${new Date(delivery.scheduledDate).toLocaleDateString()}</p>` : ''}
+            <p><strong>Items:</strong> ${delivery.items.length}</p>
+          </div>
+          <div class="kanban-card-actions">
+            <button class="btn btn-sm btn-view" data-delivery-id="${delivery.id}">View</button>
+            ${delivery.status !== 'done' && delivery.status !== 'canceled' ? `
+              <button class="btn btn-sm btn-validate" data-delivery-id="${delivery.id}">Validate</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
 
     container.querySelectorAll('.btn-validate').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -83,8 +155,9 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
           <button class="modal-close">&times;</button>
         </div>
         <form id="delivery-form">
+          ${delivery?.reference ? `<div class="form-group"><label>Reference</label><input type="text" value="${delivery.reference}" readonly /></div>` : ''}
           <div class="form-group">
-            <label>Customer</label>
+            <label>To (Customer/Vendor)</label>
             <input type="text" id="delivery-customer" value="${delivery?.customer || ''}" required />
           </div>
           <div class="form-group">
@@ -94,6 +167,27 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
             </select>
           </div>
           <div class="form-group">
+            <label>Delivery Address</label>
+            <textarea id="delivery-address" rows="3">${delivery?.deliveryAddress || ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label>Responsible</label>
+            <input type="text" id="delivery-responsible" value="${delivery?.responsible || ''}" />
+          </div>
+          <div class="form-group">
+            <label>Operation Type</label>
+            <select id="delivery-operation-type">
+              <option value="">Select operation type</option>
+              <option value="customer_delivery" ${delivery?.operationType === 'customer_delivery' ? 'selected' : ''}>Customer Delivery</option>
+              <option value="return" ${delivery?.operationType === 'return' ? 'selected' : ''}>Return</option>
+              <option value="transfer_out" ${delivery?.operationType === 'transfer_out' ? 'selected' : ''}>Transfer Out</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Schedule Date</label>
+            <input type="date" id="delivery-scheduled-date" value="${delivery?.scheduledDate ? new Date(delivery.scheduledDate).toISOString().split('T')[0] : ''}" />
+          </div>
+          <div class="form-group">
             <label>Status</label>
             <select id="delivery-status">
               <option value="draft" ${delivery?.status === 'draft' ? 'selected' : ''}>Draft</option>
@@ -101,10 +195,6 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
               <option value="ready" ${delivery?.status === 'ready' ? 'selected' : ''}>Ready</option>
               <option value="done" ${delivery?.status === 'done' ? 'selected' : ''}>Done</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Scheduled Date (Optional)</label>
-            <input type="date" id="delivery-scheduled-date" value="${delivery?.scheduledDate ? new Date(delivery.scheduledDate).toISOString().split('T')[0] : ''}" />
           </div>
           <div class="form-group">
             <label>Items</label>
@@ -163,6 +253,9 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
       e.preventDefault();
       const customer = (modal.querySelector('#delivery-customer') as HTMLInputElement).value;
       const warehouseId = (modal.querySelector('#delivery-warehouse') as HTMLSelectElement).value;
+      const deliveryAddress = (modal.querySelector('#delivery-address') as HTMLTextAreaElement).value;
+      const responsible = (modal.querySelector('#delivery-responsible') as HTMLInputElement).value;
+      const operationType = (modal.querySelector('#delivery-operation-type') as HTMLSelectElement).value;
       const status = (modal.querySelector('#delivery-status') as HTMLSelectElement).value as any;
       const scheduledDateInput = (modal.querySelector('#delivery-scheduled-date') as HTMLInputElement).value;
       const scheduledDate = scheduledDateInput ? scheduledDateInput : undefined;
@@ -197,6 +290,9 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
             status,
             items: formItems,
             scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+            deliveryAddress,
+            responsible,
+            operationType,
           });
         } else {
           // Create new delivery
@@ -207,6 +303,9 @@ export async function DeliveriesComponent(): Promise<HTMLElement> {
             status,
             items: formItems,
             scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+            deliveryAddress,
+            responsible,
+            operationType,
           });
         }
 

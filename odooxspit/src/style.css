@@ -1201,6 +1201,111 @@ table tbody tr:hover {
   padding: 0.5rem 0.75rem;
 }
 
+/* Search and View Controls */
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.view-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  min-width: 250px;
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary-color);
+  border: 1px solid var(--border-color);
+}
+
+.btn-icon:hover {
+  background: var(--primary-hover);
+  color: white;
+}
+
+.btn-icon.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Kanban View */
+.kanban-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.kanban-column {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.kanban-column h3 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.kanban-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kanban-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.kanban-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.kanban-card-body {
+  margin-bottom: 0.75rem;
+}
+
+.kanban-card-body p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.kanban-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar {
